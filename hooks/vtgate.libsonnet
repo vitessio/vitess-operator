@@ -9,6 +9,9 @@ local metacontroller = import "metacontroller.libsonnet";
   matchName(obj)::
     std.endsWith(obj.metadata.name, "-vtgate"),
 
+  matchLabels(obj)::
+    k8s.matchLabels(obj, {"vitess.io/component": "vtgate"}),
+
   // Collections of vtgate objects.
   services(observed, specs)::
     metacontroller.collection(observed, specs, "v1", "Service", vtgate.service)
@@ -19,6 +22,11 @@ local metacontroller = import "metacontroller.libsonnet";
 
   // Create/update a Service for vtgate.
   service(observed, spec):: {
+    local exposedPorts = [
+        {name: "web",  port: 15000},
+        {name: "grpc", port: 15999},
+    ]+(if "exportMysql" in spec then [{name: "mysql", port:3306}] else []),
+
     apiVersion: "v1",
     kind: "Service",
     metadata: {
@@ -29,10 +37,7 @@ local metacontroller = import "metacontroller.libsonnet";
       selector: observed.parent.spec.selector.matchLabels + {
         "vitess.io/component": "vtgate",
       },
-      ports: [
-        {name: "web",  port: 15000},
-        {name: "grpc", port: 15999},
-      ],
+      ports: exposedPorts,
     },
   },
 
@@ -43,8 +48,9 @@ local metacontroller = import "metacontroller.libsonnet";
       service_map: "grpc-vtgateservice",
       cells_to_watch: self.cell,
       tablet_types_to_wait: "MASTER,REPLICA",
-      gateway_implementation: "discoverygateway"
-    },
+      gateway_implementation: "discoverygateway",
+    } + (if "secret" in spec  then {"mysql_auth_server_static_file": "/credentials/"+spec.secret.key} else {})
+      + (if "exportMysql" in spec then {"mysql_server_port": "3306"} else {}),
     local flags = vitess.serverFlags
       + vitess.topoFlags(observed.parent.spec.cluster)
       + vtgateFlags
@@ -80,12 +86,14 @@ local metacontroller = import "metacontroller.libsonnet";
                 initialDelaySeconds: 30,
                 timeoutSeconds: 5,
               },
+              volumeMounts: [ (if "secret" in spec then {name: "credentials", mountPath: "/credentials"} else {}) ],
               resources: spec.resources,
               command: ["bash", "-c",
                 "set -ex; exec /vt/bin/vtgate " +
                 vitess.formatFlags(flags)],
             },
           ],
+          volumes: (if "secret" in spec then [{name: "credentials", secret: { secretName: spec.secret.name, key: spec.secret.key } }] else []),
         },
       },
     },

@@ -1,0 +1,8 @@
+{
+	"mysql_user": {
+		"MysqlNativePassword": "",
+		"Password": "mysql_password",
+		"UserData": "",
+		"SourceHost": "*"
+	}
+}

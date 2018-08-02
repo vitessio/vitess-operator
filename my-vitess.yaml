@@ -29,6 +29,10 @@ spec:
     vtgate:
       image: vitess/lite:v2.1.1
       replicas: 3
+      exportMysql: true
+      secret:
+        name: credentials
+        key: mysql.json
       resources:
         limits: {cpu: "100m", memory: "128Mi"}
   keyspaces:
