@@ -1,0 +1,28 @@
+apiVersion: v1
+items:
+- apiVersion: etcd.database.coreos.com/v1beta2
+  kind: EtcdCluster
+  metadata:
+    name: etcd-zone1
+  spec:
+    pod:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  etcd_cluster: etcd-zone1
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+      resources:
+        requests:
+          cpu: 200m
+          memory: 100Mi
+    repository: quay.io/coreos/etcd
+    size: 1
+    version: 3.3.10
+kind: List
+metadata:
+  resourceVersion: ""
+  selfLink: ""

@@ -1,0 +1,6 @@
+# Ignore everything
+**
+
+
+# Allow build artifact
+!build/_output/bin/vitess-operator

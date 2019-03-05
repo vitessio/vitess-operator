@@ -19,9 +19,10 @@ Objects in **bold** are custom resource kinds defined by this Operator.
   This is the only one the user creates.
   * **VitessCell**: Each Vitess [cell](https://vitess.io/overview/concepts/#cell-data-center)
     represents an independent failure domain (e.g. a Zone or Availability Zone).
-    * EtcdCluster ([etcd-operator](https://github.com/coreos/etcd-operator)):
+    * Lockserver ([etcd-operator](https://github.com/coreos/etcd-operator)):
       Vitess needs its own etcd cluster to coordinate its built-in load-balancing
-      and automatic shard routing.
+      and automatic shard routing. Vitess supports multiple lockservers but the operator
+      only supports etcd right now.
     * Deployment ([orchestrator](https://github.com/github/orchestrator)):
       An optional automated failover tool that works with Vitess.
     * Deployment ([vtctld](https://vitess.io/overview/#vtctld)):
@@ -35,17 +36,15 @@ Objects in **bold** are custom resource kinds defined by this Operator.
       is a logical database that may be composed of many MySQL databases (shards).
       * **VitessShard** (db1/0): Each Vitess [shard](https://vitess.io/overview/concepts/#shard)
       is a single-master tree of replicating MySQL instances.
-        * Pod(s) ([vttablet](https://vitess.io/overview/#vttablet)): Within a shard, there may be many Vitess [tablets](https://vitess.io/overview/concepts/#tablet)
+        * StatefulSet(s) ([vttablet](https://vitess.io/overview/#vttablet)): Within a shard, there may be many Vitess [tablets](https://vitess.io/overview/concepts/#tablet)
           (individual MySQL instances).
-          VitessShard acts like an app-specific replacement for StatefulSet,
-          creating both Pods and PersistentVolumeClaims.
         * PersistentVolumeClaim(s)
       * **VitessShard** (db1/1)
-        * Pod(s) (vttablet)
+        * StatefulSet(s) (vttablet)
         * PersistentVolumeClaim(s)
     * **VitessKeyspace** (db2)
       * **VitessShard** (db2/0)
-        * Pod(s) (vttablet)
+        * StatefulSet(s) (vttablet)
         * PersistentVolumeClaim(s)
 
 ## Prerequisites
@@ -54,32 +53,16 @@ Objects in **bold** are custom resource kinds defined by this Operator.
   collection.
   * This config currently requires a dynamic PersistentVolume provisioner and a
     default StorageClass.
-  * The example `my-vitess.yaml` config results in a lot of Pods.
-    If the Pods don't schedule due to resource limits, you can try lowering the
-    limits, lowering `replicas` values, or removing the `batch` config under
-    `tablets`.
-* Install [Metacontroller](https://github.com/GoogleCloudPlatform/metacontroller).
-* Install [etcd-operator](https://github.com/coreos/etcd-operator) in the
-  namespace where you plan to create a VitessCluster.
+* [etcd-operator](https://github.com/coreos/etcd-operator)
 
 ## Deploy the Operator
 
-You can technically install the Operator into any namespace,
-but the references in this example are hard-coded to `vitess` because some
-explicit namespace must be specified to ensure the webhooks can be reached
-across namespaces.
-
-Note that once the Operator is installed, you can create VitessCluster
-objects in any namespace.
-The example below loads `my-vitess.yaml` into the default namespace for your
-kubectl context.
-That's the namespace where etcd-operator also needs to be enabled,
-not necessarily the `vitess` namespace.
+Once the Operator is installed, you can create VitessCluster
+objects in any namespace as long as the etcd operator is runing
+in that namespace or is running [clusterwide](https://github.com/coreos/etcd-operator/blob/master/doc/user/clusterwide.md) mode.
 
 ```sh
-kubectl create namespace vitess
-kubectl create configmap vitess-operator-hooks -n vitess --from-file=hooks
-kubectl apply -f vitess-operator.yaml
+kubectl apply -R -f deploy
 ```
 
 ### Create a VitessCluster
@@ -88,19 +71,19 @@ kubectl apply -f vitess-operator.yaml
 kubectl apply -f my-vitess.yaml
 ```
 
-### View the Vitess Dashboard
+### View the Vitess Dashboards
 
 Wait until the cluster is ready:
 
 ```sh
-kubectl get vitessclusters -o 'custom-columns=NAME:.metadata.name,READY:.status.conditions[?(@.type=="Ready")].status'
+kubectl get vitessclusters -o 'custom-columns=NAME:.metadata.name,READY:.status.phase'
 ```
 
 You should see:
 
 ```console
-NAME      READY
-vitess    True
+NAME      PHASE
+vitess    Ready
 ```
 
 Start a kubectl proxy:
@@ -112,18 +95,40 @@ kubectl proxy --port=8001
 Then visit:
 
 ```
-http://localhost:8001/api/v1/namespaces/default/services/vitess-global-vtctld:web/proxy/app/
+http://localhost:8001/api/v1/namespaces/default/services/vt-zone1-vtctld:web/proxy/app/
 ```
 
 ### Clean Up
 
 ```sh
-# Delete the VitessCluster object.
+# Delete the VitessCluster  and etcd objects
 kubectl delete -f my-vitess.yaml
-# Uninstall the Vitess Operator.
-kubectl delete -f vitess-operator.yaml
-kubectl delete -n vitess configmap vitess-operator-hooks
-# Delete the namespace for the Vitess Operator,
-# assuming you created it just for this example.
-kubectl delete namespace vitess
+# Uninstall the Vitess Operator
+kubectl delete -R -f deploy
 ```
+
+## TODO
+
+- [x] Create a StatefulSet for each VitessTablet in a VitessCluster
+- [x] Create a Job to elect the initial master in each VitessShard
+- [X] Fix parenting and normalization
+- [x] Create vtctld Deployment and Service
+- [X] Create vttablet service
+- [X] Create vtgate Deployment and Service
+- [ ] Create PodDisruptionBudgets
+- [ ] Reconcile all the things!
+- [ ] Label pods when they become shard masters
+- [ ] Add the ability to automatically merge/split a shard
+- [ ] Add the ability to automatically export/import resources from embedded objects to separate objects and back
+- [ ] Move shard master election into the operator
+
+## Dev
+
+- Install the [operator sdk](https://github.com/operator-framework/operator-sdk)
+- Configure local kubectl access to a test Kubernetes cluster
+- Create the CRDs in your Kubernetes cluster
+    - `kubectl apply -f deploy/crds`
+- Run the operator locally
+    - `operator-sdk up local`
+- Create the sample cluster
+    - `kubectl create -f my-vitess.yaml`

@@ -1,39 +1,8 @@
----
-# To keep the example workload to a minimum, a single
-# topology server is used for the local and global scope
-# This is fine in small installations but may not be
-# ideal for large, multi-zone installations
-apiVersion: etcd.database.coreos.com/v1beta2
-kind: EtcdCluster
-metadata:
-  name: etcd-zone1
-spec:
-  pod:
-    affinity:
-      podAntiAffinity:
-        preferredDuringSchedulingIgnoredDuringExecution:
-        - podAffinityTerm:
-            labelSelector:
-              matchLabels:
-                etcd_cluster: etcd-vitess
-            topologyKey: kubernetes.io/hostname
-          weight: 100
-    resources:
-      requests:
-        cpu: 200m
-        memory: 100Mi
-  repository: quay.io/coreos/etcd
-  size: 1
-  version: 3.3.10
----
-# Sample VitessCluster with all resources embedded within
-# the VitessCluster object. It is also possible to split
-# all or some of the resources into their own objects for easier
-# management. See the examples directory for more information
+## Sample VitessCluster all-in-one resource
 apiVersion: vitess.io/v1alpha2
 kind: VitessCluster
 metadata:
-  name: vt
+  name: aio
   labels:
     app: vitess
 spec:

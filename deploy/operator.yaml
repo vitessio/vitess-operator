@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vitess-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: vitess-operator
+  template:
+    metadata:
+      labels:
+        name: vitess-operator
+    spec:
+      serviceAccountName: vitess-operator
+      containers:
+        - name: vitess-operator
+          image: vitess/operator:v0.0.1
+          ports:
+          - containerPort: 60000
+            name: metrics
+          command:
+          - vitess-operator
+          imagePullPolicy: Always
+          readinessProbe:
+            exec:
+              command:
+                - stat
+                - /tmp/operator-sdk-ready
+            initialDelaySeconds: 4
+            periodSeconds: 10
+            failureThreshold: 1
+          env:
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "vitess-operator"
