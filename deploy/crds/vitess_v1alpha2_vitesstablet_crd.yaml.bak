@@ -1,0 +1,93 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: vitesstablets.vitess.io
+spec:
+  group: vitess.io
+  names:
+    kind: VitessTablet
+    listKind: VitessTabletList
+    plural: vitesstablets
+    singular: vitesstablet
+  scope: Namespaced
+  versions:
+    - name: v1alpha2
+      served: true
+      storage: true
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+          spec:
+            properties:
+              tabletID:
+                type: integer
+                format: int64
+              replicas:
+                type: integer
+                format: int32
+              CellID:
+                type: string
+                pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+              type:
+                type: string
+                enum:
+                - master
+                - replica
+                - readonly
+                - backup
+                - restore
+                - drained
+              datastore:
+                type: string
+                enum:
+                - ""
+                - local
+              containers:
+                type: object
+                properties:
+                  dbflavor:
+                    type: string
+                    enum:
+                    - ""
+                    - mysql
+                  mysql:
+                    type: object
+                    properties:
+                      image:
+                        type: string
+                      resources:
+                        type: object
+                        properties:
+                          limits:
+                            type: object
+                            additionalProperties:
+                              type: string
+                          requests:
+                            type: object
+                            additionalProperties:
+                              type: string
+                      dbflavor:
+                        type: string
+                  vttablet:
+                    type: object
+                    properties:
+                      image:
+                        type: string
+                      resources:
+                        type: object
+                        properties:
+                          limits:
+                            type: object
+                            additionalProperties:
+                              type: string
+                          requests:
+                            type: object
+                            additionalProperties:
+                              type: string
+                      dbflavor:
+                        type: string
+                        enum:
+                        - ""
+                        - mysql

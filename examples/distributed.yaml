@@ -1,0 +1,93 @@
+---
+## Sample VitessTablet
+apiVersion: vitess.io/v1alpha2
+kind: VitessTablet
+metadata:
+  name: replica
+  labels:
+    cluster: complex
+spec:
+  cellID: zone1
+  tabletID: 101
+  type: replica
+---
+## Sample VitessShard selecting tablets
+apiVersion: vitess.io/v1alpha2
+kind: VitessShard
+metadata:
+  name: zero
+  labels:
+    cluster: complex
+spec:
+  defaults:
+    replicas: 2
+    containers:
+      mysql:
+        image: percona:5.7.23
+      vttablet:
+        image: vitess/vttablet:helm-1.0.4
+  tabletSelector:
+  - key: "cluster"
+    operator: "In"
+    values:
+    - "complex"
+---
+## Sample VitessKeyspace selecting shards
+apiVersion: vitess.io/v1alpha2
+kind: VitessKeyspace
+metadata:
+  name: unsharded-dbname
+  labels:
+    cluster: complex
+spec:
+  shardSelector:
+  - key: "cluster"
+    operator: "In"
+    values:
+    - "complex"
+---
+## Sample VitessCell
+apiVersion: vitess.io/v1alpha2
+kind: VitessCell
+metadata:
+  name: zone1
+  labels:
+    cluster: complex
+spec:
+  lockserver:
+    metadata:
+      name: zone1
+    spec:
+      type: etcd2
+      etcd2:
+        address: etcd-zone1-client:2379
+        pathPrefix: /vitess/zone1
+  defaults:
+    replicas: 1
+    image: vitess/vttablet:helm-1.0.4
+---
+## Sample VitessCluster selecting cells and keyspaces
+apiVersion: vitess.io/v1alpha2
+kind: VitessCluster
+metadata:
+  name: dist
+  labels:
+    app: vitess
+spec:
+  lockserver:
+    metadata:
+      name: global
+    spec:
+      etcd2:
+        address: etcd-global-client:2379
+        pathPrefix: /vitess/global
+  cellSelector:
+  - key: "cluster"
+    operator: "In"
+    values:
+    - "complex"
+  keyspaceSelector:
+  - key: "cluster"
+    operator: "In"
+    values:
+    - "complex"

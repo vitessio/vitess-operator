@@ -1,0 +1,212 @@
+---
+apiVersion: vitess.io/v1alpha2
+kind: VitessCluster
+metadata:
+  name: superawesomecluster
+  labels:
+    app: vitess    
+spec:
+  lockserver:
+    type: etcd3
+    address: etcd-cluster-client:2379
+    path: /vitess/global
+  cells:
+  cellSelector:
+    matchLabels:
+    matchExpression:
+  keyspaces:    
+  keyspaceSelector:
+    matchLabels:
+    matchExpression:
+---
+apiVersion: vitess.io/v1alpha2
+kind: VitessCell
+metadata:
+  name: uswest
+  labels:
+    app: vitess
+spec:
+  lockserver:
+    type: etcd3
+    address: etcd-cluster-client:2379
+    path: /vitess/uswest
+  vtgate:
+    - count:
+      containers:
+        vtgate:
+          image:
+          resources:
+        ...
+      affinity:
+        ...
+      credentials:
+        secret:
+          name:
+          key:
+      cells:
+        - uswest
+        - useast
+      cellSelector:
+        matchLabels:
+        matchExpression:
+  vtworker:
+    - count:
+      containers:
+        vtworker:
+          image:
+          resources:
+        ...
+      affinity:
+        ...
+  vtctld:
+    - count:
+      containers:
+        vtctld:
+          image:
+          resources:
+        ...
+      afinity:
+        ...
+---
+apiVersion: vitess.io/v1alpha2
+kind: VitessKeyspace
+metadata:
+  name: messagedb
+  labels:
+    app: vitess
+    cluster: superawesomecluster
+spec:
+  defaults:
+    shards:
+      count:
+    replicas:
+      count:
+    batch:
+      count:
+    containers:
+      vttablet:
+      mysql:
+      ...
+    cells:
+      ...
+    cellSelector:
+      ...
+  shards:
+    ...
+  shardSelector:
+    ...  
+---
+apiVersion: vitess.io/v1alpha2
+kind: VitessShard
+metadata:
+  name: "-80"
+  labels:
+    keyspace: messagedb
+    cluster: superawesomecluster
+    app: vitess
+spec:
+  defaults:
+    replicas:
+    batch:
+    containers:
+      vttablet:
+      mysql:
+      ...
+    volumeClaim:
+      ...
+  keyrange:
+    from:
+    to:
+  tablets:     
+  tabletSelector:
+---
+apiVersion: vitess.io/v1alpha2
+kind: VitessTablet
+metadata:
+  name: ""
+  labels:
+    shard: "-80"
+    keyspace: messagedb
+    cluster: superawesomecluster
+    cell: uswest
+spec:
+  tabletId: 101
+  cell: uswest
+  keyrange:
+    from:
+    to:
+  type: "replica|rdonly"
+  datastore:
+    type: local
+  containers:
+    vttablet:
+      image: vitess/base
+      resources:
+        limit: {cpu: "100m", memory: "128mi"}
+    mysql:
+      image:
+      resources:
+  volumeClaim:
+    ...
+  credentials:
+    secret:
+      name:
+      key:
+---
+apiVersion: vitess.io/v1alpha2
+kind: VitessCluster
+metadata:
+  name: superawesomecluster
+  labels:
+    app: vitess
+spec:
+  lockserver:
+    provision: true
+    etcd3:
+      address: etcd-cluster-client:2379
+      path: /vitess/global
+  # lockserverRef:
+  #   name: etcd
+  cells:
+    - metadata:
+        name: uswest
+      spec:
+        lockserver:
+          etcd3:
+            address: etc-cluster-client:2379
+            path: /vitess/uswest
+        vtgate:
+          - count: 2
+        vtworker:
+          - count: 2
+        vtctld:
+          - count: 1
+  keyspaces:
+    - metadata:
+         name: messagedb
+       spec:
+         shards:
+           - metadata:
+               name: "-80"
+             spec:
+               keyrange: { to: "80" }
+               tablets:
+                 - metadata:
+                      name: "uswest-101"
+                   spec:
+                     tabletId: 101
+                     cell: uswest
+                     type: "replica"
+                     keyrange: { to: "80" }
+           - metadata:
+               name: "80-"
+             spec:
+               keyrange: { from: "80" }
+               tablets:
+                 - metadata:
+                      name: "uswest-201"
+                   spec:
+                     tabletId: 201
+                     cell: uswest
+                     type: "replica"
+                     keyrange: { from: "80" }
