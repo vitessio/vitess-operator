@@ -15,7 +15,7 @@ spec:
       serviceAccountName: vitess-operator
       containers:
         - name: vitess-operator
-          image: vitess/operator:v0.0.1
+          image: vitess/operator:v0.0.2
           ports:
           - containerPort: 60000
             name: metrics

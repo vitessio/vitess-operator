@@ -23,7 +23,7 @@ tablet_uid=$((16#${uid_hash:0:6} * 100 + $pod_index))
 echo $tablet_uid > /vtdataroot/tabletdata/tablet-uid
 
 # Tell MySQL what hostname to report in SHOW SLAVE HOSTS.
-echo report-host=$hostname.{{ .Cluster.Name }}-vttablet > /vtdataroot/tabletdata/report-host.cnf
+echo report-host=$hostname.{{ .Cluster.Name }}-tab > /vtdataroot/tabletdata/report-host.cnf
 
 # Orchestrator looks there, so it should match -tablet_hostname above.
 
@@ -80,7 +80,7 @@ eval exec /vt/bin/vttablet $(cat <<END_OF_COMMAND
   -service_map="grpc-queryservice,grpc-tabletmanager,grpc-updatestream"
   -tablet_dir="tabletdata"
   -tablet-path="{{ .Cell.Name }}-$(cat /vtdataroot/tabletdata/tablet-uid)"
-  -tablet_hostname="$(hostname).{{ .Cluster.Name }}-vttablet"
+  -tablet_hostname="$(hostname).{{ .Cluster.Name }}-tab"
   -init_keyspace="{{ .Keyspace.Name }}"
   -init_shard="{{ .Shard.Spec.KeyRange }}"
   -init_tablet_type="{{ .Tablet.Spec.Type }}"
