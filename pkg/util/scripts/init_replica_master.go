@@ -43,7 +43,7 @@ until [ $TABLETS_READY ]; do
   tabletCount=$( echo "$shardTablets" | wc | awk '{print $1}')
 
   # check to see if the tablet count equals the expected tablet count
-  if [ $tabletCount == 2 ]; then
+  if [ $tabletCount == {{ .Shard.Spec.Defaults.Replicas }} ]; then
     TABLETS_READY=true
   else
     if (( $SECONDS > $TIMEOUT_SECONDS )); then
