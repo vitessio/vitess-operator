@@ -44,7 +44,7 @@ type VitessCellDefaults struct {
 type VitessCellMySQLProtocol struct {
 	AuthType VitessMySQLAuthType `json:"authType,omitempty"`
 
-	Username string `json:"image,omitempty"`
+	Username string `json:"username,omitempty"`
 
 	// Password string `json:"password"`
 
