@@ -1,3 +1,8 @@
+# Deprecation notice
+
+This repository is deprecated, and will soon be archived.
+Instructions for the new operator can be found [here](https://vitess.io/docs/get-started/operator/).
+
 # Vitess Operator
 
 The Vitess Operator provides automation that simplifies the administration
